@@ -1,0 +1,588 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "Untitled6.ipynb",
+      "provenance": [],
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/lizagonch/NLP/blob/master/SpellingCorrection\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "FL08UMDw2ozL",
+        "colab_type": "code",
+        "outputId": "0163805d-8a56-4620-fb1f-d1ff31c4ae81",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 224
+        }
+      },
+      "source": [
+        "! wget https://raw.githubusercontent.com/lizagonch/NLP/master/big.txt"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "--2019-12-03 17:53:19--  https://raw.githubusercontent.com/lizagonch/NLP/master/big.txt\n",
+            "Resolving raw.githubusercontent.com (raw.githubusercontent.com)... 151.101.0.133, 151.101.64.133, 151.101.128.133, ...\n",
+            "Connecting to raw.githubusercontent.com (raw.githubusercontent.com)|151.101.0.133|:443... connected.\n",
+            "HTTP request sent, awaiting response... 200 OK\n",
+            "Length: 6488666 (6.2M) [text/plain]\n",
+            "Saving to: ‘big.txt’\n",
+            "\n",
+            "big.txt             100%[===================>]   6.19M  --.-KB/s    in 0.1s    \n",
+            "\n",
+            "2019-12-03 17:53:20 (48.8 MB/s) - ‘big.txt’ saved [6488666/6488666]\n",
+            "\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "sJrz1YC05HY8",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "import re\n",
+        "from collections import Counter\n",
+        "\n",
+        "def words(text): return re.findall(r'\\w+', text.lower())\n",
+        "\n",
+        "WORDS = Counter(words(open('big.txt').read()))\n",
+        "\n",
+        "def P(word, N=sum(WORDS.values())): \n",
+        "    \"Probability of `word`.\"\n",
+        "    return WORDS[word] / N\n",
+        "\n",
+        "def correction(word): \n",
+        "    \"Most probable spelling correction for word.\"\n",
+        "    return max(candidates(word), key=P)\n",
+        "\n",
+        "def candidates(word): \n",
+        "    \"Generate possible spelling corrections for word.\"\n",
+        "    return (known([word]) or known(edits1(word)) or known(edits2(word)) or [word])\n",
+        "\n",
+        "def known(words): \n",
+        "    \"The subset of `words` that appear in the dictionary of WORDS.\"\n",
+        "    return set(w for w in words if w in WORDS)\n",
+        "\n",
+        "def edits1(word):\n",
+        "    \"All edits that are one edit away from `word`.\"\n",
+        "    letters    = 'abcdefghijklmnopqrstuvwxyz'\n",
+        "    splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]\n",
+        "    deletes    = [L + R[1:]               for L, R in splits if R]\n",
+        "    transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1]\n",
+        "    replaces   = [L + c + R[1:]           for L, R in splits if R for c in letters]\n",
+        "    inserts    = [L + c + R               for L, R in splits for c in letters]\n",
+        "    return set(deletes + transposes + replaces + inserts)\n",
+        "\n",
+        "def edits2(word): \n",
+        "    \"All edits that are two edits away from `word`.\"\n",
+        "    return (e2 for e1 in edits1(word) for e2 in edits1(e1))"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "jkxRoQ4C2pfx",
+        "colab_type": "code",
+        "outputId": "ea80b395-9365-46b3-b082-12fcbcb8996c",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        }
+      },
+      "source": [
+        "correction('speling')\n"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "'spelling'"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 6
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "IFaArAj05Yd1",
+        "colab_type": "code",
+        "outputId": "ebc15c19-d0a8-4a10-8a7b-4beda4a4cac3",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        }
+      },
+      "source": [
+        "correction('korrectud')"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "'corrected'"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 7
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "smzhMJ80LpYE",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 1000
+        },
+        "outputId": "c6f42621-b709-4cbe-829d-ec62c36082eb"
+      },
+      "source": [
+        "!pip install deeppavlov"
+      ],
+      "execution_count": 49,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Collecting deeppAVLOV\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/d7/9d/453d101981b293441be889ba91d6983abdeeb2b3abc070b47a4044f6a64b/deeppavlov-0.7.1-py3-none-any.whl (735kB)\n",
+            "\u001b[K     |████████████████████████████████| 737kB 2.7MB/s \n",
+            "\u001b[?25hCollecting fastapi==0.38.1\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/37/59/1a42dde38f1ae2a7a318947e54fabd1fc02ac423ecc91957c417065e7cc6/fastapi-0.38.1-py3-none-any.whl (160kB)\n",
+            "\u001b[K     |████████████████████████████████| 163kB 45.6MB/s \n",
+            "\u001b[?25hCollecting fuzzywuzzy==0.17.0\n",
+            "  Downloading https://files.pythonhosted.org/packages/d8/f1/5a267addb30ab7eaa1beab2b9323073815da4551076554ecc890a3595ec9/fuzzywuzzy-0.17.0-py2.py3-none-any.whl\n",
+            "Collecting uvicorn==0.9.0\n",
+            "  Downloading https://files.pythonhosted.org/packages/5a/a9/2ab492155d9b76cf109c2370e201822ba3c7f4aed85f5a1b4d22907e7206/uvicorn-0.9.0.tar.gz\n",
+            "Collecting keras==2.2.4\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/5e/10/aa32dad071ce52b5502266b5c659451cfd6ffcbf14e6c8c4f16c0ff5aaab/Keras-2.2.4-py2.py3-none-any.whl (312kB)\n",
+            "\u001b[K     |████████████████████████████████| 317kB 35.6MB/s \n",
+            "\u001b[?25hCollecting tqdm==4.32.2\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/9f/3d/7a6b68b631d2ab54975f3a4863f3c4e9b26445353264ef01f465dc9b0208/tqdm-4.32.2-py2.py3-none-any.whl (50kB)\n",
+            "\u001b[K     |████████████████████████████████| 51kB 5.8MB/s \n",
+            "\u001b[?25hCollecting requests==2.22.0\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/51/bd/23c926cd341ea6b7dd0b2a00aba99ae0f828be89d72b2190f27c11d4b7fb/requests-2.22.0-py2.py3-none-any.whl (57kB)\n",
+            "\u001b[K     |████████████████████████████████| 61kB 7.4MB/s \n",
+            "\u001b[?25hCollecting scikit-learn==0.21.2\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/85/04/49633f490f726da6e454fddc8e938bbb5bfed2001681118d3814c219b723/scikit_learn-0.21.2-cp36-cp36m-manylinux1_x86_64.whl (6.7MB)\n",
+            "\u001b[K     |████████████████████████████████| 6.7MB 41.9MB/s \n",
+            "\u001b[?25hCollecting scipy==1.3.0\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/72/4c/5f81e7264b0a7a8bd570810f48cd346ba36faedbd2ba255c873ad556de76/scipy-1.3.0-cp36-cp36m-manylinux1_x86_64.whl (25.2MB)\n",
+            "\u001b[K     |████████████████████████████████| 25.2MB 91kB/s \n",
+            "\u001b[?25hCollecting overrides==1.9\n",
+            "  Downloading https://files.pythonhosted.org/packages/de/55/3100c6d14c1ed177492fcf8f07c4a7d2d6c996c0a7fc6a9a0a41308e7eec/overrides-1.9.tar.gz\n",
+            "Collecting Cython==0.29.12\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/58/2f/b08ad77c639040baafc891621f0cfdb209e2266404ca13c3167970a6f6d6/Cython-0.29.12-cp36-cp36m-manylinux1_x86_64.whl (2.1MB)\n",
+            "\u001b[K     |████████████████████████████████| 2.1MB 9.7MB/s \n",
+            "\u001b[?25hRequirement already satisfied: nltk==3.2.5 in /usr/local/lib/python3.6/dist-packages (from deeppAVLOV) (3.2.5)\n",
+            "Collecting pandas==0.24.2\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/19/74/e50234bc82c553fecdbd566d8650801e3fe2d6d8c8d940638e3d8a7c5522/pandas-0.24.2-cp36-cp36m-manylinux1_x86_64.whl (10.1MB)\n",
+            "\u001b[K     |████████████████████████████████| 10.1MB 19.1MB/s \n",
+            "\u001b[?25hCollecting pytelegrambotapi==3.6.6\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/25/5e/9711642455c4e17b1202d4f6403ede0fef37fc145038aee7193f3b24445e/pyTelegramBotAPI-3.6.6.tar.gz (49kB)\n",
+            "\u001b[K     |████████████████████████████████| 51kB 5.1MB/s \n",
+            "\u001b[?25hCollecting numpy==1.16.4\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/87/2d/e4656149cbadd3a8a0369fcd1a9c7d61cc7b87b3903b85389c70c989a696/numpy-1.16.4-cp36-cp36m-manylinux1_x86_64.whl (17.3MB)\n",
+            "\u001b[K     |████████████████████████████████| 17.3MB 135kB/s \n",
+            "\u001b[?25hCollecting rusenttokenize==0.0.5\n",
+            "  Downloading https://files.pythonhosted.org/packages/25/4c/a2f00be5def774a3df2e5387145f1cb54e324607ec4a7e23f573645946e7/rusenttokenize-0.0.5-py3-none-any.whl\n",
+            "Collecting pymorphy2-dicts-ru\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/7c/9b/358faaff410f65a4ad159275e897b5956dcb20576c5b8e764b971c1634d7/pymorphy2_dicts_ru-2.4.404381.4453942-py2.py3-none-any.whl (8.0MB)\n",
+            "\u001b[K     |████████████████████████████████| 8.0MB 25.8MB/s \n",
+            "\u001b[?25hCollecting pymorphy2==0.8\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/a3/33/fff9675c68b5f6c63ec8c6e6ff57827dda28a1fa5b2c2d727dffff92dd47/pymorphy2-0.8-py2.py3-none-any.whl (46kB)\n",
+            "\u001b[K     |████████████████████████████████| 51kB 5.5MB/s \n",
+            "\u001b[?25hCollecting h5py==2.9.0\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/30/99/d7d4fbf2d02bb30fb76179911a250074b55b852d34e98dd452a9f394ac06/h5py-2.9.0-cp36-cp36m-manylinux1_x86_64.whl (2.8MB)\n",
+            "\u001b[K     |████████████████████████████████| 2.8MB 31.9MB/s \n",
+            "\u001b[?25hCollecting pyopenssl==19.0.0\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/01/c8/ceb170d81bd3941cbeb9940fc6cc2ef2ca4288d0ca8929ea4db5905d904d/pyOpenSSL-19.0.0-py2.py3-none-any.whl (53kB)\n",
+            "\u001b[K     |████████████████████████████████| 61kB 6.3MB/s \n",
+            "\u001b[?25hCollecting pydantic<=0.32.2,>=0.32.2\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/86/78/2edcc6e65ec020403ac6ba6deb54c1cf227c49232ce9d98a1ae7ebdfa3a1/pydantic-0.32.2-cp36-cp36m-manylinux1_x86_64.whl (5.1MB)\n",
+            "\u001b[K     |████████████████████████████████| 5.1MB 47.7MB/s \n",
+            "\u001b[?25hCollecting starlette<=0.12.8,>=0.11.1\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/97/4a/90a6a8685fcbdcf544a2293d0d0211ecba3cd7f309b831499d5c895383cb/starlette-0.12.8.tar.gz (45kB)\n",
+            "\u001b[K     |████████████████████████████████| 51kB 5.7MB/s \n",
+            "\u001b[?25hRequirement already satisfied: click==7.* in /usr/local/lib/python3.6/dist-packages (from uvicorn==0.9.0->deeppAVLOV) (7.0)\n",
+            "Collecting h11==0.8.*\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/f9/f3/8e4cf5fa1a3d8bda942a0b1cf92f87815494216fd439f82eb99073141ba0/h11-0.8.1-py2.py3-none-any.whl (55kB)\n",
+            "\u001b[K     |████████████████████████████████| 61kB 6.4MB/s \n",
+            "\u001b[?25hCollecting websockets==8.*\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/bb/d9/856af84843912e2853b1b6e898ac8b802989fcf9ecf8e8445a1da263bf3b/websockets-8.1-cp36-cp36m-manylinux2010_x86_64.whl (78kB)\n",
+            "\u001b[K     |████████████████████████████████| 81kB 8.0MB/s \n",
+            "\u001b[?25hCollecting httptools==0.0.13\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/1b/03/215969db11abe8741e9c266a4cbe803a372bd86dd35fa0084c4df6d4bd00/httptools-0.0.13.tar.gz (104kB)\n",
+            "\u001b[K     |████████████████████████████████| 112kB 44.2MB/s \n",
+            "\u001b[?25hCollecting uvloop==0.*\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/41/48/586225bbb02d3bdca475b17e4be5ce5b3f09da2d6979f359916c1592a687/uvloop-0.14.0-cp36-cp36m-manylinux2010_x86_64.whl (3.9MB)\n",
+            "\u001b[K     |████████████████████████████████| 3.9MB 31.0MB/s \n",
+            "\u001b[?25hRequirement already satisfied: keras-preprocessing>=1.0.5 in /usr/local/lib/python3.6/dist-packages (from keras==2.2.4->deeppAVLOV) (1.1.0)\n",
+            "Requirement already satisfied: keras-applications>=1.0.6 in /usr/local/lib/python3.6/dist-packages (from keras==2.2.4->deeppAVLOV) (1.0.8)\n",
+            "Requirement already satisfied: six>=1.9.0 in /usr/local/lib/python3.6/dist-packages (from keras==2.2.4->deeppAVLOV) (1.12.0)\n",
+            "Requirement already satisfied: pyyaml in /usr/local/lib/python3.6/dist-packages (from keras==2.2.4->deeppAVLOV) (3.13)\n",
+            "Requirement already satisfied: urllib3!=1.25.0,!=1.25.1,<1.26,>=1.21.1 in /usr/local/lib/python3.6/dist-packages (from requests==2.22.0->deeppAVLOV) (1.24.3)\n",
+            "Requirement already satisfied: chardet<3.1.0,>=3.0.2 in /usr/local/lib/python3.6/dist-packages (from requests==2.22.0->deeppAVLOV) (3.0.4)\n",
+            "Requirement already satisfied: certifi>=2017.4.17 in /usr/local/lib/python3.6/dist-packages (from requests==2.22.0->deeppAVLOV) (2019.9.11)\n",
+            "Requirement already satisfied: idna<2.9,>=2.5 in /usr/local/lib/python3.6/dist-packages (from requests==2.22.0->deeppAVLOV) (2.8)\n",
+            "Requirement already satisfied: joblib>=0.11 in /usr/local/lib/python3.6/dist-packages (from scikit-learn==0.21.2->deeppAVLOV) (0.14.0)\n",
+            "Requirement already satisfied: python-dateutil>=2.5.0 in /usr/local/lib/python3.6/dist-packages (from pandas==0.24.2->deeppAVLOV) (2.6.1)\n",
+            "Requirement already satisfied: pytz>=2011k in /usr/local/lib/python3.6/dist-packages (from pandas==0.24.2->deeppAVLOV) (2018.9)\n",
+            "Requirement already satisfied: docopt>=0.6 in /usr/local/lib/python3.6/dist-packages (from pymorphy2==0.8->deeppAVLOV) (0.6.2)\n",
+            "Collecting dawg-python>=0.7\n",
+            "  Downloading https://files.pythonhosted.org/packages/6a/84/ff1ce2071d4c650ec85745766c0047ccc3b5036f1d03559fd46bb38b5eeb/DAWG_Python-0.7.2-py2.py3-none-any.whl\n",
+            "Collecting pymorphy2-dicts<3.0,>=2.4\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/02/51/2465fd4f72328ab50877b54777764d928da8cb15b74e2680fc1bd8cb3173/pymorphy2_dicts-2.4.393442.3710985-py2.py3-none-any.whl (7.1MB)\n",
+            "\u001b[K     |████████████████████████████████| 7.1MB 21.2MB/s \n",
+            "\u001b[?25hCollecting cryptography>=2.3\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/ca/9a/7cece52c46546e214e10811b36b2da52ce1ea7fa203203a629b8dfadad53/cryptography-2.8-cp34-abi3-manylinux2010_x86_64.whl (2.3MB)\n",
+            "\u001b[K     |████████████████████████████████| 2.3MB 32.2MB/s \n",
+            "\u001b[?25hRequirement already satisfied: dataclasses>=0.6; python_version < \"3.7\" in /usr/local/lib/python3.6/dist-packages (from pydantic<=0.32.2,>=0.32.2->fastapi==0.38.1->deeppAVLOV) (0.7)\n",
+            "Requirement already satisfied: cffi!=1.11.3,>=1.8 in /usr/local/lib/python3.6/dist-packages (from cryptography>=2.3->pyopenssl==19.0.0->deeppAVLOV) (1.13.2)\n",
+            "Requirement already satisfied: pycparser in /usr/local/lib/python3.6/dist-packages (from cffi!=1.11.3,>=1.8->cryptography>=2.3->pyopenssl==19.0.0->deeppAVLOV) (2.19)\n",
+            "Building wheels for collected packages: uvicorn, overrides, pytelegrambotapi, starlette, httptools\n",
+            "  Building wheel for uvicorn (setup.py) ... \u001b[?25l\u001b[?25hdone\n",
+            "  Created wheel for uvicorn: filename=uvicorn-0.9.0-cp36-none-any.whl size=37118 sha256=cc872643b74a9d406bfc4d3af5d8db59df2f64fff62a93daea29f715317aeda3\n",
+            "  Stored in directory: /root/.cache/pip/wheels/19/e5/d1/a50d405d3bb18fac538ef9606ed9b6cd5efb6e06b6de834507\n",
+            "  Building wheel for overrides (setup.py) ... \u001b[?25l\u001b[?25hdone\n",
+            "  Created wheel for overrides: filename=overrides-1.9-cp36-none-any.whl size=4214 sha256=cd87db17cdc73ad8153c18fc8c6310fd157f2ff9bd33d16a8a42b9444fa8d225\n",
+            "  Stored in directory: /root/.cache/pip/wheels/8d/52/86/e5a83b1797e7d263b458d2334edd2704c78508b3eea9323718\n",
+            "  Building wheel for pytelegrambotapi (setup.py) ... \u001b[?25l\u001b[?25hdone\n",
+            "  Created wheel for pytelegrambotapi: filename=pyTelegramBotAPI-3.6.6-cp36-none-any.whl size=44856 sha256=330b3753e3ceb145040dc1bbd74e1a090cd25a4eb94189972d82c14cab909166\n",
+            "  Stored in directory: /root/.cache/pip/wheels/ae/69/d7/26f1fb04ac4d4c95bff643cea765a8e91c4348da25b4744e08\n",
+            "  Building wheel for starlette (setup.py) ... \u001b[?25l\u001b[?25hdone\n",
+            "  Created wheel for starlette: filename=starlette-0.12.8-cp36-none-any.whl size=56910 sha256=f7eff2798b3650878f1cf6ef6a2198f89badb68b3af211cd52eb81dd22acd19b\n",
+            "  Stored in directory: /root/.cache/pip/wheels/fd/a0/1d/17eb20c5742e3236799a7883e56325823d57fcd8ce2a0c9348\n",
+            "  Building wheel for httptools (setup.py) ... \u001b[?25l\u001b[?25hdone\n",
+            "  Created wheel for httptools: filename=httptools-0.0.13-cp36-cp36m-linux_x86_64.whl size=212557 sha256=96e578edbf156acbc41f7d0cd0910d6ab0b4214a28ea2a4908b7ce704e841434\n",
+            "  Stored in directory: /root/.cache/pip/wheels/e8/3e/2e/013f99b42efc25cf3589730cf380738e46b1e5edaf2f78d525\n",
+            "Successfully built uvicorn overrides pytelegrambotapi starlette httptools\n",
+            "\u001b[31mERROR: google-colab 1.0.0 has requirement pandas~=0.25.0; python_version >= \"3.0\", but you'll have pandas 0.24.2 which is incompatible.\u001b[0m\n",
+            "\u001b[31mERROR: google-colab 1.0.0 has requirement requests~=2.21.0, but you'll have requests 2.22.0 which is incompatible.\u001b[0m\n",
+            "\u001b[31mERROR: datascience 0.10.6 has requirement folium==0.2.1, but you'll have folium 0.8.3 which is incompatible.\u001b[0m\n",
+            "\u001b[31mERROR: albumentations 0.1.12 has requirement imgaug<0.2.7,>=0.2.5, but you'll have imgaug 0.2.9 which is incompatible.\u001b[0m\n",
+            "Installing collected packages: pydantic, starlette, fastapi, fuzzywuzzy, h11, websockets, httptools, uvloop, uvicorn, numpy, scipy, h5py, keras, tqdm, requests, scikit-learn, overrides, Cython, pandas, pytelegrambotapi, rusenttokenize, pymorphy2-dicts-ru, dawg-python, pymorphy2-dicts, pymorphy2, cryptography, pyopenssl, deeppAVLOV\n",
+            "  Found existing installation: numpy 1.17.4\n",
+            "    Uninstalling numpy-1.17.4:\n",
+            "      Successfully uninstalled numpy-1.17.4\n",
+            "  Found existing installation: scipy 1.3.2\n",
+            "    Uninstalling scipy-1.3.2:\n",
+            "      Successfully uninstalled scipy-1.3.2\n",
+            "  Found existing installation: h5py 2.8.0\n",
+            "    Uninstalling h5py-2.8.0:\n",
+            "      Successfully uninstalled h5py-2.8.0\n",
+            "  Found existing installation: Keras 2.2.5\n",
+            "    Uninstalling Keras-2.2.5:\n",
+            "      Successfully uninstalled Keras-2.2.5\n",
+            "  Found existing installation: tqdm 4.28.1\n",
+            "    Uninstalling tqdm-4.28.1:\n",
+            "      Successfully uninstalled tqdm-4.28.1\n",
+            "  Found existing installation: requests 2.21.0\n",
+            "    Uninstalling requests-2.21.0:\n",
+            "      Successfully uninstalled requests-2.21.0\n",
+            "  Found existing installation: scikit-learn 0.21.3\n",
+            "    Uninstalling scikit-learn-0.21.3:\n",
+            "      Successfully uninstalled scikit-learn-0.21.3\n",
+            "  Found existing installation: Cython 0.29.14\n",
+            "    Uninstalling Cython-0.29.14:\n",
+            "      Successfully uninstalled Cython-0.29.14\n",
+            "  Found existing installation: pandas 0.25.3\n",
+            "    Uninstalling pandas-0.25.3:\n",
+            "      Successfully uninstalled pandas-0.25.3\n",
+            "Successfully installed Cython-0.29.12 cryptography-2.8 dawg-python-0.7.2 deeppAVLOV-0.7.1 fastapi-0.38.1 fuzzywuzzy-0.17.0 h11-0.8.1 h5py-2.9.0 httptools-0.0.13 keras-2.2.4 numpy-1.16.4 overrides-1.9 pandas-0.24.2 pydantic-0.32.2 pymorphy2-0.8 pymorphy2-dicts-2.4.393442.3710985 pymorphy2-dicts-ru-2.4.404381.4453942 pyopenssl-19.0.0 pytelegrambotapi-3.6.6 requests-2.22.0 rusenttokenize-0.0.5 scikit-learn-0.21.2 scipy-1.3.0 starlette-0.12.8 tqdm-4.32.2 uvicorn-0.9.0 uvloop-0.14.0 websockets-8.1\n"
+          ],
+          "name": "stdout"
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/vnd.colab-display-data+json": {
+              "pip_warning": {
+                "packages": [
+                  "numpy",
+                  "pandas",
+                  "requests",
+                  "tqdm"
+                ]
+              }
+            }
+          },
+          "metadata": {
+            "tags": []
+          }
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "cXum0LA9M9oi",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 173
+        },
+        "outputId": "9888d0b5-c610-492c-bf57-d6f4e17d5097"
+      },
+      "source": [
+        "!pip install email-validator"
+      ],
+      "execution_count": 61,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Collecting email-validator\n",
+            "  Downloading https://files.pythonhosted.org/packages/8a/67/9f2e15c3052ac54773b99bedcc9cb3c0654ab1065652bb2c0145bea6335d/email_validator-1.0.5-py2.py3-none-any.whl\n",
+            "Requirement already satisfied: idna>=2.0.0 in /usr/local/lib/python3.6/dist-packages (from email-validator) (2.8)\n",
+            "Collecting dnspython>=1.15.0\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/ec/d3/3aa0e7213ef72b8585747aa0e271a9523e713813b9a20177ebe1e939deb0/dnspython-1.16.0-py2.py3-none-any.whl (188kB)\n",
+            "\u001b[K     |████████████████████████████████| 194kB 4.2MB/s \n",
+            "\u001b[?25hInstalling collected packages: dnspython, email-validator\n",
+            "Successfully installed dnspython-1.16.0 email-validator-1.0.5\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "CBEswSC9NUEC",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 204
+        },
+        "outputId": "407e53af-790a-499a-d8c7-9f59e55d2b3b"
+      },
+      "source": [
+        "! wget https://raw.githubusercontent.com/deepmipt/DeepPavlov/0.7.1/deeppavlov/configs/spelling_correction/levenshtein_corrector_ru.json"
+      ],
+      "execution_count": 63,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "--2019-12-03 19:20:59--  https://raw.githubusercontent.com/deepmipt/DeepPavlov/0.7.1/deeppavlov/configs/spelling_correction/levenshtein_corrector_ru.json\n",
+            "Resolving raw.githubusercontent.com (raw.githubusercontent.com)... 151.101.0.133, 151.101.64.133, 151.101.128.133, ...\n",
+            "Connecting to raw.githubusercontent.com (raw.githubusercontent.com)|151.101.0.133|:443... connected.\n",
+            "HTTP request sent, awaiting response... 200 OK\n",
+            "Length: 1857 (1.8K) [text/plain]\n",
+            "Saving to: ‘levenshtein_corrector_ru.json’\n",
+            "\n",
+            "\r          levenshte   0%[                    ]       0  --.-KB/s               \rlevenshtein_correct 100%[===================>]   1.81K  --.-KB/s    in 0s      \n",
+            "\n",
+            "2019-12-03 19:21:00 (412 MB/s) - ‘levenshtein_corrector_ru.json’ saved [1857/1857]\n",
+            "\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "VyifOHm7LT0l",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 666
+        },
+        "outputId": "859e36d8-699f-4c2b-aa52-055aec141b46"
+      },
+      "source": [
+        "! python -m deeppavlov install levenshtein_corrector_ru.json"
+      ],
+      "execution_count": 64,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Collecting lxml==4.3.4\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/2d/53/34a9f0c79c548e430148837892b6ae91adee571a0e8b6c17bd7ff9c2d12e/lxml-4.3.4-cp36-cp36m-manylinux1_x86_64.whl (5.7MB)\n",
+            "\u001b[K     |████████████████████████████████| 5.7MB 2.7MB/s \n",
+            "\u001b[?25hInstalling collected packages: lxml\n",
+            "  Found existing installation: lxml 4.2.6\n",
+            "    Uninstalling lxml-4.2.6:\n",
+            "      Successfully uninstalled lxml-4.2.6\n",
+            "Successfully installed lxml-4.3.4\n",
+            "Collecting python-Levenshtein==0.12.0\n",
+            "\u001b[?25l  Downloading https://files.pythonhosted.org/packages/42/a9/d1785c85ebf9b7dfacd08938dd028209c34a0ea3b1bcdb895208bd40a67d/python-Levenshtein-0.12.0.tar.gz (48kB)\n",
+            "\u001b[K     |████████████████████████████████| 51kB 1.6MB/s \n",
+            "\u001b[?25hRequirement already satisfied: setuptools in /usr/local/lib/python3.6/dist-packages (from python-Levenshtein==0.12.0) (41.6.0)\n",
+            "Building wheels for collected packages: python-Levenshtein\n",
+            "  Building wheel for python-Levenshtein (setup.py) ... \u001b[?25l\u001b[?25hdone\n",
+            "  Created wheel for python-Levenshtein: filename=python_Levenshtein-0.12.0-cp36-cp36m-linux_x86_64.whl size=144659 sha256=f4fc355c8a0eed1b6c1e2ca012f7edc342839a0b95d141cbdecec66b1e8e23c6\n",
+            "  Stored in directory: /root/.cache/pip/wheels/de/c2/93/660fd5f7559049268ad2dc6d81c4e39e9e36518766eaf7e342\n",
+            "Successfully built python-Levenshtein\n",
+            "Installing collected packages: python-Levenshtein\n",
+            "Successfully installed python-Levenshtein-0.12.0\n",
+            "Collecting sortedcontainers==2.0.2\n",
+            "  Downloading https://files.pythonhosted.org/packages/de/20/1403d968975ff68eef437793d11d0f4798709f441870de1a4e240c859c19/sortedcontainers-2.0.2-py2.py3-none-any.whl\n",
+            "Installing collected packages: sortedcontainers\n",
+            "  Found existing installation: sortedcontainers 2.1.0\n",
+            "    Uninstalling sortedcontainers-2.1.0:\n",
+            "      Successfully uninstalled sortedcontainers-2.1.0\n",
+            "Successfully installed sortedcontainers-2.0.2\n",
+            "Collecting kenlm\n",
+            "  Cloning https://github.com/kpu/kenlm.git (to revision 2ad7cb56924cd3c6811c604973f592cb5ef604eb) to /tmp/pip-install-_rq807u4/kenlm\n",
+            "  Running command git clone -q https://github.com/kpu/kenlm.git /tmp/pip-install-_rq807u4/kenlm\n",
+            "  Running command git checkout -q 2ad7cb56924cd3c6811c604973f592cb5ef604eb\n",
+            "Building wheels for collected packages: kenlm\n",
+            "  Building wheel for kenlm (setup.py) ... \u001b[?25l\u001b[?25hdone\n",
+            "  Created wheel for kenlm: filename=kenlm-0.0.0-cp36-cp36m-linux_x86_64.whl size=2304614 sha256=2056cb0cbe9e9bdcef16a645a4b1818c156a12a823738fe4141a50df3ffa7a88\n",
+            "  Stored in directory: /tmp/pip-ephem-wheel-cache-kc17z81m/wheels/79/b3/81/7f4d1354905f13ec1477e3b7376bcffbeafe761b5248b0fc15\n",
+            "Successfully built kenlm\n",
+            "Installing collected packages: kenlm\n",
+            "Successfully installed kenlm-0.0.0\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "NP49PHbaMTzm",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "!python -m deeppavlov interact levenshtein_corrector_ru.json [-d]"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "IuCR3iB1Nm6t",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 360
+        },
+        "outputId": "1b6e7a47-60fd-4e88-cc22-1471f368f996"
+      },
+      "source": [
+        "import sys\n",
+        "\n",
+        "from deeppavlov import build_model, configs\n",
+        "\n",
+        "CONFIG_PATH = configs.spelling_correction.brillmoore_kartaslov_ru\n",
+        "\n",
+        "model = build_model(CONFIG_PATH, download=True)\n",
+        "for line in sys.stdin:\n",
+        "    print(model([line])[0], flush=True)"
+      ],
+      "execution_count": 66,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "2019-12-03 19:23:00.571 INFO in 'deeppavlov.core.data.utils'['utils'] at line 80: Downloading from http://files.deeppavlov.ai/deeppavlov_data/error_model.tar.gz to /root/.deeppavlov/error_model.tar.gz\n",
+            "100%|██████████| 5.36M/5.36M [00:03<00:00, 1.65MB/s]\n",
+            "2019-12-03 19:23:03.826 INFO in 'deeppavlov.core.data.utils'['utils'] at line 237: Extracting /root/.deeppavlov/error_model.tar.gz archive into /root/.deeppavlov/models\n",
+            "2019-12-03 19:23:06.158 INFO in 'deeppavlov.core.data.utils'['utils'] at line 80: Downloading from http://files.deeppavlov.ai/lang_models/ru_wiyalen_no_punkt.arpa.binary.gz to /root/.deeppavlov/downloads/ru_wiyalen_no_punkt.arpa.binary.gz\n",
+            "100%|██████████| 3.26G/3.26G [14:13<00:00, 3.82MB/s]\n",
+            "2019-12-03 19:37:19.237 INFO in 'deeppavlov.core.data.utils'['utils'] at line 237: Extracting /root/.deeppavlov/downloads/ru_wiyalen_no_punkt.arpa.binary.gz archive into /root/.deeppavlov/downloads/language_models\n",
+            "[nltk_data] Downloading package punkt to /root/nltk_data...\n",
+            "[nltk_data]   Unzipping tokenizers/punkt.zip.\n",
+            "[nltk_data] Downloading package stopwords to /root/nltk_data...\n",
+            "[nltk_data]   Unzipping corpora/stopwords.zip.\n",
+            "[nltk_data] Downloading package perluniprops to /root/nltk_data...\n",
+            "[nltk_data]   Unzipping misc/perluniprops.zip.\n",
+            "[nltk_data] Downloading package nonbreaking_prefixes to\n",
+            "[nltk_data]     /root/nltk_data...\n",
+            "[nltk_data]   Unzipping corpora/nonbreaking_prefixes.zip.\n",
+            "2019-12-03 19:39:07.352 INFO in 'deeppavlov.vocabs.typos'['typos'] at line 56: Trying to build a dictionary in /root/.deeppavlov/downloads/vocabs/russian_words_vocab\n",
+            "2019-12-03 19:39:07.353 INFO in 'deeppavlov.vocabs.typos'['typos'] at line 122: Downloading russian vocab from https://github.com/danakt/russian-words/\n",
+            "2019-12-03 19:40:10.575 INFO in 'deeppavlov.vocabs.typos'['typos'] at line 81: built\n",
+            "2019-12-03 19:40:21.772 INFO in 'deeppavlov.models.spelling_correction.brillmoore.error_model'['error_model'] at line 236: loading error_model from `/root/.deeppavlov/models/error_model/error_model_ru.tsv`\n"
+          ],
+          "name": "stderr"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "6rUa0g5sNydH",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        },
+        "outputId": "f519fbd6-50c8-4872-9010-a78786859cd4"
+      },
+      "source": [
+        "print(model([\"прафильно\"])[0])"
+      ],
+      "execution_count": 80,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "правильно\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "vMhq52CUUSvy",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": 0,
+      "outputs": []
+    }
+  ]
+}
